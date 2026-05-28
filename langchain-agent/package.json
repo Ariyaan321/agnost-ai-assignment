@@ -1,0 +1,38 @@
+{
+  "name": "langchain-agent",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node-dev --respawn --transpile-only server.ts",
+    "instrument": "npx tsx --import ./instrument.ts server.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@ai-sdk/groq": "^3.0.39",
+    "@langchain/core": "^1.1.7",
+    "@langchain/groq": "^1.0.2",
+    "@langchain/langgraph-checkpoint-mongodb": "^1.0.0",
+    "agnost-sdk": "file:../agnost-sdk",
+    "ai": "^6.0.191",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "googleapis": "^169.0.0",
+    "groq-sdk": "^0.37.0",
+    "langchain": "^1.2.2",
+    "langsmith": "^0.4.1",
+    "mongodb": "^7.0.0",
+    "mongoose": "^9.0.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3"
+  }
+}
