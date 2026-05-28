@@ -17,9 +17,12 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
     "@opentelemetry/sdk-node": "^0.218.0",
     "@opentelemetry/sdk-trace-base": "^2.7.1",
+    "ai": "^6.0.191",
+    "express": "^5.2.1",
     "langchain": "^1.4.2"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^25.9.1",
     "typescript": "^6.0.3"
   }

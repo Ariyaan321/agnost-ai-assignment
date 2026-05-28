@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agnost Local UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+</head>
+
+<body class="bg-gray-950 text-gray-200 h-screen flex flex-col font-sans overflow-hidden">
+
+    <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 shrink-0">
+        <h1 class="text-xl font-bold text-white flex items-center gap-2">
+            <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z">
+                </path>
+            </svg>
+            Agnost Observability
+        </h1>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+
+        <aside class="w-1/3 max-w-sm border-r border-gray-800 bg-gray-900/50 flex flex-col">
+            <div class="p-4 border-b border-gray-800 font-semibold text-sm text-gray-400">Recent Traces</div>
+            <div id="trace-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+                <div class="text-gray-500 text-sm p-4 text-center">Loading traces...</div>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto bg-gray-950 p-6">
+            <div id="trace-detail" class="hidden max-w-4xl mx-auto">
+
+                <div class="grid grid-cols-4 gap-4 mb-8">
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                        <div class="text-xs text-gray-500 mb-1">Model</div>
+                        <div id="detail-model" class="font-mono text-sm text-blue-400 truncate"></div>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                        <div class="text-xs text-gray-500 mb-1">Provider</div>
+                        <div id="detail-provider" class="font-mono text-sm text-purple-400 truncate"></div>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                        <div class="text-xs text-gray-500 mb-1">Latency</div>
+                        <div id="detail-latency" class="font-mono text-sm text-green-400"></div>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                        <div class="text-xs text-gray-500 mb-1">Total Tokens</div>
+                        <div id="detail-tokens" class="font-mono text-sm text-orange-400"></div>
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-semibold text-gray-400 mb-4 border-b border-gray-800 pb-2">Execution Trace</h3>
+                <div id="chat-flow" class="space-y-6">
+                </div>
+
+            </div>
+
+            <div id="empty-state" class="h-full flex items-center justify-center text-gray-500">
+                Select a trace from the sidebar to view details.
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let globalTraces = [];
+
+        // 1. Fetch Traces on Load
+        async function fetchTraces() {
+            try {
+                const res = await fetch('/api/traces');
+                globalTraces = await res.json();
+                renderSidebar();
+            } catch (err) {
+                document.getElementById('trace-list').innerHTML = `<div class="text-red-500 p-4 text-sm">Failed to connect to SDK.</div>`;
+            }
+        }
+
+        // 2. Render Left Sidebar
+        function renderSidebar() {
+            const listEl = document.getElementById('trace-list');
+            if (globalTraces.length === 0) {
+                listEl.innerHTML = `<div class="text-gray-500 text-sm p-4 text-center">No traces yet. Run your agent!</div>`;
+                return;
+            }
+
+            listEl.innerHTML = globalTraces.map((trace, index) => {
+                const time = new Date(trace.timestamp).toLocaleTimeString();
+                return `
+                    <button onclick="selectTrace(${index})" class="w-full text-left p-3 rounded hover:bg-gray-800 transition-colors border border-transparent focus:border-gray-700 focus:bg-gray-800 flex flex-col gap-1">
+                        <div class="flex justify-between items-center w-full">
+                            <span class="text-sm font-medium text-gray-200 truncate pr-2">${trace.model || 'Unknown Model'}</span>
+                            <span class="text-xs text-gray-500 shrink-0">${time}</span>
+                        </div>
+                        <div class="flex gap-2 text-xs text-gray-500 font-mono">
+                            <span>${trace.latencyMs}ms</span>
+                            <span>•</span>
+                            <span>${trace.toolCalls?.length || 0} tools</span>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        // 3. Render Right Panel (Trace Details)
+        // 3. Render Right Panel (Trace Details)
+        function selectTrace(index) {
+            const trace = globalTraces[index];
+            if (!trace) return;
+
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('trace-detail').classList.remove('hidden');
+
+            // Set Top Metrics
+            document.getElementById('detail-model').textContent = trace.model || 'N/A';
+            document.getElementById('detail-provider').textContent = trace.provider || 'N/A';
+            document.getElementById('detail-latency').textContent = trace.latencyMs ? `${trace.latencyMs} ms` : 'N/A';
+            document.getElementById('detail-tokens').textContent = trace.usage?.totalTokens || 0;
+
+            let flowHtml = '';
+
+            // 1. Render ONLY the most recent User Prompt
+            let promptText = "Unknown input";
+            try {
+                if (Array.isArray(trace.prompt)) {
+                    // Extract the last user message from the array
+                    const userMsg = trace.prompt.slice().reverse().find(m => m.role === 'user');
+                    if (userMsg && Array.isArray(userMsg.content)) {
+                        promptText = userMsg.content[0].text;
+                    } else if (userMsg) {
+                        promptText = userMsg.content;
+                    }
+                } else if (typeof trace.prompt === 'string') {
+                    promptText = trace.prompt;
+                }
+            } catch (e) { }
+
+            flowHtml += `
+                <div class="flex flex-col items-end mb-6">
+                    <div class="bg-blue-600/20 border border-blue-500/30 text-blue-100 rounded-2xl rounded-tr-sm px-5 py-3 max-w-[80%] shadow-sm">
+                        <div class="text-xs text-blue-400 mb-1 font-semibold tracking-wide">USER INPUT</div>
+                        <div class="whitespace-pre-wrap text-sm">${escapeHtml(promptText)}</div>
+                    </div>
+                </div>
+            `;
+
+            // 2. Render the Tool Calls that happened during this trace
+            if (trace.toolCalls && trace.toolCalls.length > 0) {
+                trace.toolCalls.forEach(tool => {
+                    flowHtml += `
+                        <div class="flex flex-col items-center my-4">
+                            <div class="bg-gray-900 border border-gray-700 text-gray-300 rounded-lg w-full max-w-2xl overflow-hidden shadow-sm">
+                                <div class="bg-gray-800 px-4 py-2 border-b border-gray-700 flex justify-between items-center">
+                                    <div class="text-xs font-mono text-yellow-400 flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                        TOOL EXECUTION: ${tool.toolName}
+                                    </div>
+                                    <div class="text-xs text-gray-500">${tool.durationMs || 0}ms</div>
+                                </div>
+                                <div class="p-4 space-y-3">
+                                    <div>
+                                        <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Arguments</div>
+                                        <pre class="text-xs bg-gray-950 p-2 rounded border border-gray-800 text-gray-300 overflow-x-auto">${escapeHtml(JSON.stringify(tool.arguments, null, 2))}</pre>
+                                    </div>
+                                    <div>
+                                        <div class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Result</div>
+                                        <pre class="text-xs bg-gray-950 p-2 rounded border border-gray-800 text-green-400 overflow-x-auto">${escapeHtml(JSON.stringify(tool.result, null, 2))}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            // 3. Render Final Agent Response
+            if (trace.response) {
+                flowHtml += `
+                    <div class="flex flex-col items-start mt-6">
+                        <div class="bg-gray-800 border border-gray-700 text-gray-200 rounded-2xl rounded-tl-sm px-5 py-3 max-w-[80%] shadow-sm border-l-4 border-l-green-500">
+                            <div class="text-xs text-green-400 mb-1 font-semibold tracking-wide">FINAL RESPONSE</div>
+                            <div class="whitespace-pre-wrap text-sm">${escapeHtml(trace.response)}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (!trace.toolCalls || trace.toolCalls.length === 0) {
+                flowHtml += `
+                    <div class="text-center text-sm text-gray-500 italic mt-6">No text response generated.</div>
+                `;
+            }
+
+            document.getElementById('chat-flow').innerHTML = flowHtml;
+        }
+
+        // Helper to prevent XSS
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') return JSON.stringify(unsafe);
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Initialize polling to keep UI fresh
+        fetchTraces();
+        setInterval(fetchTraces, 2000); 
+    </script>
+</body>
+
+</html>
