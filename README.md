@@ -94,3 +94,10 @@ npm run instrument
 ```
 
 🎉 Your application is now up and running!
+
+
+## What would I do differently with a month instead of a weekend
+- Learn the entire OpenTelemetry framework from the inside out since its the base on which the SDK stands
+- Better architectural choices like using the most compatible Database for receiving & processing telemetry signals(the most frequent DB I heard during this assignment was ClickHouse)
+- Go deep in the code/setup of various Agent SDKs to find a common ground between all and engineer a pipeline to make them compatible/integrate with our SDK
+- Ideate to innovate & optimize Agnost AI's service to provide the best outcome to the consumers and developers
