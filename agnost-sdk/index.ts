@@ -4,7 +4,7 @@ import { SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import express from 'express';
 import path from 'path';
 
-import { generateText as originalGenerateText, tool, stepCountIs } from 'ai';
+// import { generateText as originalGenerateText, tool, stepCountIs } from 'ai';
 
 // In-memory datastore for the developer's local session
 const tracesStore = new Map<string, any>();
@@ -95,7 +95,7 @@ function startLocalUiServer(port: number) {
 
 export function initAgnost(config: { port?: number } = {}) {
     const port = config.port || 8080;
-    // startLocalUiServer(port)
+    startLocalUiServer(port)
     const exporter = new OTLPTraceExporter({ url: `http://localhost:${port}/v1/traces` });
 
     const sdk = new NodeSDK({
@@ -107,16 +107,16 @@ export function initAgnost(config: { port?: number } = {}) {
     console.log(`[Agnost] Telemetry bridge active. Sending data to port ${port}`);
 }
 
-export const generateText: typeof originalGenerateText = (async (options: any) => {
-    return originalGenerateText({
-        ...options,
-        experimental_telemetry: {
-            isEnabled: true,
-            recordInputs: true,
-            recordOutputs: true,
-            ...(options.experimental_telemetry || {})
-        }
-    });
-}) as any
+// export const generateText: typeof originalGenerateText = (async (options: any) => {
+//     return originalGenerateText({
+//         ...options,
+//         experimental_telemetry: {
+//             isEnabled: true,
+//             recordInputs: true,
+//             recordOutputs: true,
+//             ...(options.experimental_telemetry || {})
+//         }
+//     });
+// }) as any
 
-export { tool, stepCountIs };
+// export { tool, stepCountIs };

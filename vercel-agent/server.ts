@@ -1,4 +1,4 @@
-import { generateText, stepCountIs, tool } from 'agnost-sdk';
+import { generateText, stepCountIs, tool } from 'ai';
 import { groq } from '@ai-sdk/groq';
 import { z } from 'zod';
 import dotenv from 'dotenv';
@@ -32,6 +32,12 @@ async function main() {
             system: "You are a helpful assistant. The user is currently located in San Francisco, CA, USA. If a tool requires a location and the user does not specify one, default to this location.",
             messages: messages,
             stopWhen: stepCountIs(5),
+
+            experimental_telemetry: {
+                isEnabled: true,
+                recordInputs: true,
+                recordOutputs: true
+            },
 
             tools: {
                 // Tool 1: The original weather tool
